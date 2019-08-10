@@ -23,7 +23,7 @@ Visual Studio のインストールは、Visual Studio のホームページ([ht
 Vulkan を使うために必要なSDKは、Vulkan SDK です。
 実際には、LunarG Vulkan SDKというSDKぐらいしか選択肢がないようです。
 
-LunarG Vulkan SDK をダウンロードするには、LunarGのサイト([https://vulkan.lunarg.com/](https://vulkan.lunarg.com/) )に行って、SDKをダウンロードしてきます。
+LunarG Vulkan SDK をダウンロードするには、LunarGのサイト([https://vulkan.lunarg.com/](https://vulkan.lunarg.com/))に行って、SDKをダウンロードしてきます。
 
 ![LunarG HP](2/install0.png "LunarG HP")
 
@@ -59,13 +59,13 @@ Vulkan SDK が使えるかどうかの判定は、サンプルプログラムを
 GLFW は、Vulkanをはじめ、OpenGL系のデスクトップ開発を行うためのオープンソースでマルチプラットフォームなライブラリです。
 機種の依存性を吸収してくるので、ウィンドウ生成などのVulkanでは吸収しきれないプラットフォームの違いを吸収してくれます。
 
-GLFWは、公式ページ ([https://www.glfw.org/](https://www.glfw.org/) )からダウンロードできます。
+GLFWは、公式ページ ([https://www.glfw.org/](https://www.glfw.org/))からダウンロードできます。
 
 Windows の場合には、コンパイル済みのライブラリが提供されているので、「Download」タグの「Windows pre-compiled binaries」の
 項目から、「64-bit Windows binaries」など各Windows用のボタンを押して、ライブラリを入手してください。
 
 ソースコードからライブラリを構築する場合には、OpenGLを勉強する際に日本の開発者のほぼ全員がお世話になっているといえる、
-[和歌山大学の床井 浩平先生](http://marina.sys.wakayama-u.ac.jp/~tokoi/)の「[GLFW による OpenGL 入門 (PDF)](http://marina.sys.wakayama-u.ac.jp/~tokoi/GLFW.pdf)」の「GLFW のインストール」を参考にするのが非常に良いです。
+[和歌山大学の床井 浩平先生](http://marina.sys.wakayama-u.ac.jp/~tokoi/)の「GLFW による OpenGL 入門 (PDF)[http://marina.sys.wakayama-u.ac.jp/~tokoi/GLFW.pdf](http://marina.sys.wakayama-u.ac.jp/~tokoi/GLFW.pdf)」の「GLFW のインストール」を参考にするのが非常に良いです。
 
 今回は、床井先生のサイトを参考に、「C:\OpenGL\include」の下に「GLFW」のフォルダを作って、その中にヘッダファイルを置き、
 「C:\OpenGL\lib」の下にライブラリファイルを置くことにしました。
@@ -77,7 +77,7 @@ Windows の場合には、コンパイル済みのライブラリが提供され
 最近の3D APIは行列計算を含めないことが多くなってきました(OpenGLでは昔からですが…)。
 ということで、行列ライブラリが多く開発されてきているのですが、その一つがGLMです。
 
-GLMも公式ページ((https://glm.g-truc.net/)[https://glm.g-truc.net/0.9.9/] )のDownloadsから最新版がダウンロードできます。
+GLMも公式ページ([https://glm.g-truc.net/](https://glm.g-truc.net/))のDownloadsから最新版がダウンロードできます。
 
 GLMはヘッダだけのライブラリで「.lib」や「.dll」ファイルはありません。
 ダウンロードしたファイルを解凍してでてきた「glm」フォルダのさらに中にある「glm」フォルダを、GLFWと同じように「C:\OpenGL\include」の下にコピーすれば、インストールは終了です。
