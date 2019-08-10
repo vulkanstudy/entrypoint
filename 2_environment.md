@@ -27,5 +27,15 @@ LunarG Vulkan SDK をダウンロードするには、[LunarGのサイト](https
 
 ![LunarG HP](2/install0.png "LunarG HP")
 
+インストールはありがちなウィザードの進行で進んでいきます。
+
+![LunarG HP](2/install1.png "LunarG HP")
+
+![LunarG HP](2/install2.png "LunarG HP")
+
+![LunarG HP](2/install3.png "LunarG HP")
+
+![LunarG HP](2/install4.png "LunarG HP")
+
 
 * [戻る](./)
