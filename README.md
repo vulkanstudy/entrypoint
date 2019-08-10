@@ -1,1 +1,1 @@
-# entrypoint
+# はじめに
