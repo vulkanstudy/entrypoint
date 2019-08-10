@@ -44,7 +44,7 @@ LunarG Vulkan SDK をダウンロードするには、[LunarGのサイト](https
 * include: ヘッダファイルが入っています
 * Lib: ライブラリファイルが収められています。(32ビット版向けには、Lib32)
 
-![VulkanSDKフォルダ構成](2/install4.png "LunarG HP")
+![VulkanSDKフォルダ構成](2/install5.png "LunarG HP")
 
 Vulkan SDK が使えるかどうかの判定は、サンプルプログラムを実行することで確認できます。
 「Bin/vkcube.exe」を実行してみてください。
@@ -52,7 +52,7 @@ Vulkan SDK が使えるかどうかの判定は、サンプルプログラムを
 実行できない場合は、グラフィックスカードのドライバーをVulkan対応の最新のものにしてみてください。
 あまりにPCが古い場合は、新しいPCを購入しましょう。現在は、安いPCでもVulkanプログラムは実行できます。
 
-![vkcube.exeの実行結果](2/install5.png "LunarG HP")
+![vkcube.exeの実行結果](2/install6.png "LunarG HP")
 
 
 * [戻る](./)
