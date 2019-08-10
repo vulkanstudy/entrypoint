@@ -14,7 +14,7 @@
 ゲームの開発は長くなりがちなので、なるべく最新のVisual Studioで勉強するのがよいでしょう。
 (SDK、ツールが更新して、動かなくなったプログラムを修正で苦労するのは、プログラミングでよくあることです。よくはないのですが…)。
 
-Visual Studio のインストールは、Visual Studio のホームページ[https://visualstudio.microsoft.com/ja/](https://visualstudio.microsoft.com/ja/)からインストールする製品を選択してインストールします。
+Visual Studio のインストールは、Visual Studio のホームページ([https://visualstudio.microsoft.com/ja/](https://visualstudio.microsoft.com/ja/) )からインストールする製品を選択してインストールします。
 
 インストール時に、「C++によるデスクトップ開発」を選択してください。
 
@@ -23,7 +23,7 @@ Visual Studio のインストールは、Visual Studio のホームページ[htt
 Vulkan を使うために必要なSDKは、Vulkan SDK です。
 実際には、LunarG Vulkan SDKというSDKぐらいしか選択肢がないようです。
 
-LunarG Vulkan SDK をダウンロードするには、LunarGのサイト[https://vulkan.lunarg.com/](https://vulkan.lunarg.com/)に行って、SDKをダウンロードしてきます。
+LunarG Vulkan SDK をダウンロードするには、LunarGのサイト([https://vulkan.lunarg.com/](https://vulkan.lunarg.com/) )に行って、SDKをダウンロードしてきます。
 
 ![LunarG HP](2/install0.png "LunarG HP")
 
@@ -59,7 +59,7 @@ Vulkan SDK が使えるかどうかの判定は、サンプルプログラムを
 GLFW は、Vulkanをはじめ、OpenGL系のデスクトップ開発を行うためのオープンソースでマルチプラットフォームなライブラリです。
 機種の依存性を吸収してくるので、ウィンドウ生成などのVulkanでは吸収しきれないプラットフォームの違いを吸収してくれます。
 
-GLFWは、公式ページ [https://www.glfw.org/](https://www.glfw.org/) からダウンロードできます。
+GLFWは、公式ページ ([https://www.glfw.org/](https://www.glfw.org/) )からダウンロードできます。
 
 Windows の場合には、コンパイル済みのライブラリが提供されているので、「Download」タグの「Windows pre-compiled binaries」の
 項目から、「64-bit Windows binaries」など各Windows用のボタンを押して、ライブラリを入手してください。
