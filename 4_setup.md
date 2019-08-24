@@ -52,15 +52,18 @@ public:
 };
 ```
 
-## ウィンドウクラスの導入
+# ウィンドウの生成
 Windows のアプリケーションは、画面の一部分の「窓」で実行されます（全画面かもしれませんが）。
 
 GLFWは、OSのAPI呼び出しを大分サポートしてくれるので、かなり簡単にウィンドウを生成することができます。
 この処理だけを追加してみましょう。
 
+## 宣言の追加
+
 GLFWでは、GLFWwindowへのポインタとして、ウィンドウを管理することができます。
 こちらは、アプリケーションクラスのメンバーとして持たせましょう。
 後は、セッティングとしての「初期化」、「後片付け」のメソッドと、初期化が終わった後の基本ループである「通常処理」の呼び出しでアプリケーションを実行させ続けることができます。
+
 
 ```cpp:src/MyApplication.h 
 #pragma once
@@ -88,6 +91,8 @@ public:
 	}
 };
 ```
+
+## 生成処理の実体
 
 では、それぞれのメソッドの中を見てみましょう。
 
@@ -142,13 +147,15 @@ glfwCreateWindowの返り値が、GLFWwindowのインスタンスへのポイン
 	}
 ```
 
-## Vulkanのインスタンスの生成
+# Vulkanの導入
 
 GLFWの頑張りで、ウィンドウを表示することができたので、次は、Vulkanが画面を表示するようにしていきます
 （といっても、実際に意味のある画面を表示するのは、まだまだ先なのですが…）。
 
 Vulkanに指示を出すのは、「VkInstance」のインスタンス(Vulkanのメモリ的な意味での実体)を通して行います。
 ![Vulkanのインスタンス](4/instance.png "Vulkanのインスタンス")
+
+## 宣言の追加
 
 Vulkanの初期化と後片付けのコードをまず追加してきましょう。
 
@@ -168,6 +175,8 @@ Vulkanの初期化と後片付けのコードをまず追加してきましょ�
 		finalizeWindow();
 	}
 ```
+
+## インスタンス生成の実体
 
 初期化と片付けの関数では、インスタンスを生成するメドッドと、インスタンスを破棄する関数``vkDestroyInstance``を呼び出します。
 
@@ -199,17 +208,17 @@ Vulkanの初期化と後片付けのコードをまず追加してきましょ�
 	{
 		// アプケーション情報を定めるための構造体
 		VkApplicationInfo appInfo = {};
-		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;			// 構造体の種類
-		appInfo.pApplicationName = APP_NAME;						// アプリケーション名
-		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);		// 開発者が決めるバージョン番号
-		appInfo.pEngineName = "My Engine";							// ゲームエンジン名
-		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);			// ゲームエンジンのバージョン
-		appInfo.apiVersion = VK_API_VERSION_1_0;					// 使用するAPIのバージョン
+		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;    // 構造体の種類
+		appInfo.pApplicationName = APP_NAME;                   // アプリケーション名
+		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0); // 開発者が決めるバージョン番号
+		appInfo.pEngineName = "My Engine";                     // ゲームエンジン名
+		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);      // ゲームエンジンのバージョン
+		appInfo.apiVersion = VK_API_VERSION_1_0;               // 使用するAPIのバージョン
 
 		// 新しく作られるインスタンスの設定の構造体
 		VkInstanceCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// 構造体の種類
-		createInfo.pApplicationInfo = &appInfo;						// VkApplicationInfoの情報
+		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO; // 構造体の種類
+		createInfo.pApplicationInfo = &appInfo;                    // VkApplicationInfoの情報
 
 		// valkanの拡張機能を取得して、初期化データに追加
 		std::vector<const char*> extensions = getRequiredExtensions();
@@ -248,7 +257,50 @@ GPUの性能を最大限に活かすために、人間は奴隷となって下�
 
 頑張りましょう…
 
-# 
+## 拡張機能
+先ほどのコードでは、``VkInstanceCreateInfo`` に対して、``enabledExtensionCount``と``ppEnabledExtensionNames``を通して拡張機能を追加していました。
+その中身を見てみましょう。
+
+``glfwGetRequiredInstanceExtensions`` を使うと、現在使っているシステムが対応している拡張機能（エクステンション）を取得することができます。
+引数には、返ってきた結果の個数を格納するための変数を指定し、返り値は結果文字列のポインタ配列になります。
+
+```cpp:src/MyApplication.h 
+	static std::vector<const char*> getRequiredExtensions()
+	{
+		// 拡張の個数を検出
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+		if (enableValidationLayers) {
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+
+		return extensions;
+	}
+```
+
+なお、実際にどのような拡張機能が読みだされるのかは、試しに表示してみるのが良いでしょう。
+下のようなコードで、拡張機能を列挙することができます。
+
+```cpp:src/MyApplication.h 
+#ifdef _DEBUG
+		// 有効なエクステンションの表示
+		std::cout << "available extensions:" << std::endl;
+		for (const auto& extension : extensions) {
+			std::cout << "\t" << extension << std::endl;
+		}
+#endif
+```
+
+これを、手元にあったRadeon RX 560 で実行してみると、次の結果が得られました。
+
+![拡張機能の表示](4/extensions.png "拡張機能の表示")
+
+# 検証レイヤーの追加
+
+# デバッグメッセージ表示
 
 [dummy](URL)
 
