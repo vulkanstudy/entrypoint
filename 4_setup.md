@@ -148,27 +148,83 @@ GLFWの頑張りで、ウィンドウを表示することができたので、�
 （といっても、実際に意味のある画面を表示するのは、まだまだ先なのですが…）。
 
 Vulkanに指示を出すのは、「VkInstance」のインスタンス(Vulkanのメモリ的な意味での実体)を通して行います。
+![Vulkanのインスタンス](4/instance.png "Vulkanのインスタンス")
 
-Vulkanの初期化と後片付けのコードを見ていきましょう。
+Vulkanの初期化と後片付けのコードをまず追加してきましょう。
 
 ```cpp:src/MyApplication.h 
-	VkInstance instance_;
+	VkInstance instance_;// ★追加！
 	void run()
 	{
 		// 初期化
 		initializeWindow();
-		initializeVulkan();
+		initializeVulkan();// ★追加！
 
 		// 通常処理
 		mainloop();
 
 		// 後片付け
-		finalizeVulkan();
+		finalizeVulkan();// ★追加！
 		finalizeWindow();
 	}
 ```
 
+初期化と片付けの関数では、インスタンスを生成するメドッドと、インスタンスを破棄する関数``vkDestroyInstance``を呼び出します。
 
+```cpp:src/MyApplication.h 
+	// Vulkanの設定
+	void initializeVulkan()
+	{
+		createInstance(&instance_);
+	}
+
+	void finalizeVulkan()
+	{
+		vkDestroyInstance(instance_, nullptr);
+	}
+```
+
+ここで、``createInstance`` は、MyApplicationのprivateメソッドです。
+ここから、Vulkanの面倒くさいところが始まってきます。
+
+``createInstance``では、``VkInstanceCreateInfo``の構造体を渡して``vkCreateInstance``を呼び出します。
+
+``VkInstanceCreateInfo``構造体では、タイトル名などのアプケーション情報を記録した``VkApplicationInfo``構造体の実体のアドレスを記録することで、
+アプリケーションの設定情報をVulkanに伝えます。
+![vkCreateInstanceのイメージ](4/instance_info.png "vkCreateInstanceのイメージ")
+
+
+```cpp:src/MyApplication.h 
+	static void createInstance(VkInstance *dest)
+	{
+		// アプケーション情報を定めるための構造体
+		VkApplicationInfo appInfo = {};
+		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;			// 構造体の種類
+		appInfo.pApplicationName = APP_NAME;						// アプリケーション名
+		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);		// 開発者が決めるバージョン番号
+		appInfo.pEngineName = "My Engine";							// ゲームエンジン名
+		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);			// ゲームエンジンのバージョン
+		appInfo.apiVersion = VK_API_VERSION_1_0;					// 使用するAPIのバージョン
+
+		// 新しく作られるインスタンスの設定の構造体
+		VkInstanceCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// 構造体の種類
+		createInfo.pApplicationInfo = &appInfo;						// VkApplicationInfoの情報
+
+		// valkanの拡張機能を取得して、初期化データに追加
+		std::vector<const char*> extensions = getRequiredExtensions();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+		createInfo.ppEnabledExtensionNames = extensions.data();
+
+		// インスタンスの生成
+		if (vkCreateInstance(&createInfo, nullptr, dest) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create instance!");
+		}
+	}
+
+```
+
+![Vulkanのコマンドを送るイメージ](4/command.png "Vulkanのコマンドを送るイメージ")
 
 # 
 
