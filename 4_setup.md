@@ -13,7 +13,7 @@
 アプリケーションクラスを導入することで、メイン関数はシンプルにできます。
 具体的には、アプリケーションクラスのインスタンスを作成して、`run()` メソッドを呼び出します。
 
-```src/main.cpp
+```cpp:src/main.cpp
 #include <iostream>
 #include "MyApplication.h"
 
@@ -39,7 +39,7 @@ int main()
 
 アプリケーションクラスは、次のクラスを拡張していくものとなります。
 
-```src/MyApplication.h 
+```cpp:src/MyApplication.h 
 #pragma once
 
 class MyApplication
@@ -62,7 +62,7 @@ GLFWでは、GLFWwindowへのポインタとして、ウィンドウを管理す
 こちらは、アプリケーションクラスのメンバーとして持たせましょう。
 後は、セッティングとしての「初期化」、「後片付け」のメソッドと、初期化が終わった後の基本ループである「通常処理」の呼び出しでアプリケーションを実行させ続けることができます。
 
-```src/MyApplication.h 
+```cpp:src/MyApplication.h 
 #pragma once
 
 #include <GLFW/glfw3.h>
@@ -101,7 +101,7 @@ glfwCreateWindowの返り値が、GLFWwindowのインスタンスへのポイン
 ユーザーによるウィンドウのサイズ変更を禁止する設定を行いました。
 他のオプションは、GLFWの「Window guide」の[「Window creation hints」](https://www.glfw.org/docs/latest/window_guide.html#GLFW_CLIENT_API_hint)の項目を見てみてください。
 
-```src/MyApplication.h 
+```cpp:src/MyApplication.h 
 	constexpr static char APP_NAME[] = "Vulkan Application";
 	// 表示ウィンドウの設定
 	void initializeWindow()
@@ -121,7 +121,7 @@ glfwCreateWindowの返り値が、GLFWwindowのインスタンスへのポイン
 後片付けは、初期化のそれぞれに対応する関数`glfwTerminate()`、`glfwDestroyWindow()`を、逆順で呼び出していきます。
 
 
-```src/MyApplication.h 
+```cpp:src/MyApplication.h 
 	void finalizeWindow()
 	{
 		glfwDestroyWindow(window_);
@@ -131,7 +131,7 @@ glfwCreateWindowの返り値が、GLFWwindowのインスタンスへのポイン
 
 メインループは、GLFWが終わらないか確認しながら、イベントが起きる様なら(例えば、キーボード入力)それを処理していきます。
 
-```src/MyApplication.h 
+```cpp:src/MyApplication.h 
 	// 通常の処理
 	void mainloop()
 	{
@@ -139,6 +139,32 @@ glfwCreateWindowの返り値が、GLFWwindowのインスタンスへのポイン
 		{
 			glfwPollEvents();
 		}
+	}
+```
+
+## Vulkanのインスタンスの生成
+
+GLFWの頑張りで、ウィンドウを表示することができたので、次は、Vulkanが画面を表示するようにしていきます
+（といっても、実際に意味のある画面を表示するのは、まだまだ先なのですが…）。
+
+Vulkanに指示を出すのは、「VkInstance」のインスタンス(Vulkanのメモリ的な意味での実体)を通して行います。
+
+Vulkanの初期化と後片付けのコードを見ていきましょう。
+
+```cpp:src/MyApplication.h 
+	VkInstance instance_;
+	void run()
+	{
+		// 初期化
+		initializeWindow();
+		initializeVulkan();
+
+		// 通常処理
+		mainloop();
+
+		// 後片付け
+		finalizeVulkan();
+		finalizeWindow();
 	}
 ```
 
