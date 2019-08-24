@@ -261,7 +261,7 @@ GPUの性能を最大限に活かすために、人間は奴隷となって下�
 先ほどのコードでは、``VkInstanceCreateInfo`` に対して、``enabledExtensionCount``と``ppEnabledExtensionNames``を通して拡張機能を追加していました。
 その中身を見てみましょう。
 
-``glfwGetRequiredInstanceExtensions`` を使うと、現在使っているシステムが対応している拡張機能（エクステンション）を取得することができます。
+``glfwGetRequiredInstanceExtensions`` を使うと、現在使っているシステムが対応しているウィンドウシステムの拡張機能（エクステンション）を取得することができます。
 引数には、返ってきた結果の個数を格納するための変数を指定し、返り値は結果文字列のポインタ配列になります。
 
 ```cpp:src/MyApplication.h 
@@ -297,6 +297,13 @@ GPUの性能を最大限に活かすために、人間は奴隷となって下�
 これを、手元にあったRadeon RX 560 で実行してみると、次の結果が得られました。
 
 ![拡張機能の表示](4/extensions.png "拡張機能の表示")
+
+全て``VK_``で始まっていることがわかります。``VK_KHR_``は、Vulkanの仕様を決めているKhronos Groupが標準化したものになります。
+``VK_KHR_surface``は、クロスプラットフォームのサーフェス（画面）が使え、``VK_KHR_win32_surface``としてWindows用のサーフェスも使えることが読み取れます。
+
+``VK_EXT_``は、まだ標準化まで至っていない機能となります。
+``VK_EXT_debug_utils``ということで、デバッグ用の機能が追加されたシステムであることが読み取れます。
+
 
 # 検証レイヤーの追加
 
