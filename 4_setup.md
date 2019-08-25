@@ -595,9 +595,41 @@ private:
 
 ## インスタンス生成時の検証
 
+さて、以上でVulkanのインスタンスが作られて破棄される間に不具合があれば、不具合内容がコンソールに出力されるのですが、
+インスタンス生成時に不具合があるかどうかは検証できません。
 
-![インスタンス情報の追加](4/messenger_info "インスタンス情報の追加")
+と言いつつも、実はインスタンス生成時見つけた不具合を生成することができます。
+それは、``vkCreateInstance`` でインスタンスを生成するときの、``VkInstanceCreateInfo``にデバッグ情報の生成情報も追加する方法です。
 
+
+![インスタンス情報の追加](4/messenger_info.png "インスタンス情報の追加")
+
+``VkInstanceCreateInfo``には、``pNext``という続きを追加するメンバーがいて、ここに、デバッグメッセンジャーの生成情報を追加すれば、
+デバッグメッセンジャーが内部で作られて、不具合が見つかったところで、メッセージ分を表示ししてくれます。
+
+```cpp:src/MyApplication.h 
+	static void createInstance(VkInstance *dest)
+	{
+		// 新しく作られるインスタンスの設定の構造体
+		VkInstanceCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// 構造体の種類
+　 		略)
+
+		if (enableValidationLayers) {
+			(中略)
+
+			// デバッグメッセンジャーもその後に引き続いて作成する
+			VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = populateDebugMessengerCreateInfo();
+			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)& debugCreateInfo;// ★: 追加
+		}
+
+		// インスタンスの生成
+		if (vkCreateInstance(&createInfo, nullptr, dest) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create instance!");
+		}
+	}
+
+```
 
 
 * [戻る](./)
