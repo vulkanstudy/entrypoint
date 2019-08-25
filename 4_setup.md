@@ -429,9 +429,175 @@ const bool enableValidationLayers = true;
 
 # デバッグメッセージ表示
 
-[dummy](URL)
+さて、検証レイヤーを追加しましたが、実はこのままでは一つ問題があります。
+検証レイヤーが不具合を見つけてもそれを知る手段がありません。
+検証レイヤーが発見した不具合を表示するには、表示の環境を別途整えてあげなくてはなりません。
 
-![dummy](URL "comment")
+そのための仕組みとして、``VkDebugUtilsMessengerEXT``という拡張機能があります。
+この拡張機能は、デバッグメッセージを取得して、ユーザーが好みの表示方法を使ってメッセージを表示できるようにします。
+
+## 拡張機能を使うことの宣言
+
+拡張機能を使うには、``VkInstanceCreateInfo`` の拡張機能のリストに使う拡張機能を追加します。
+
+今回の拡張機能の場合には、``VK_EXT_DEBUG_UTILS_EXTENSION_NAME`` を追加します。
+
+```cpp:src/MyApplication.h 
+	static std::vector<const char*> getRequiredExtensions()
+	{
+		// 拡張の個数を検出
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+		if (enableValidationLayers) {
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);// ★ 追加
+		}
+
+#ifdef _DEBUG
+		// 有効なエクステンションの表示
+		std::cout << "available extensions:" << std::endl;
+		for (const auto& extension : extensions) {
+			std::cout << "\t" << extension << std::endl;
+		}
+#endif
+
+		return extensions;
+	}
+```
+
+## 拡張機能の初期化と片付け
+
+これで、Vulkanのインスタンス的にデバッグメッセンジャーが使えるようになるのですが、実際は、いろいろな設定をしなくてはなりません。
+具体的には、初期化と片付けの処理を追加しなくてはなりません。
+これらの処理は、vulkanのインスタンスの初期化の処理に挟むとよさそうです。
+
+```cpp:src/MyApplication.h 
+class MyApplication
+{
+private:
+	constexpr static char APP_NAME[] = "Vulkan Application";
+
+	GLFWwindow* window_;
+	VkInstance instance_;
+	VkDebugUtilsMessengerEXT debugMessenger_;// デバッグメッセージを伝えるオブジェクト// ★追加
+	
+	(中略)
+
+	// Vulkanの設定
+	void initializeVulkan()
+	{
+		createInstance(&instance_);
+		initializeDebugMessenger(instance_, debugMessenger_);// ★追加
+	}
+
+	void finalizeVulkan()
+	{
+		finalizeDebugMessenger(instance_, debugMessenger_);// ★追加
+		vkDestroyInstance(instance_, nullptr);
+	}
+	
+	(後略)
+```
+
+### 拡張機能の初期化と片付け
+
+初期化ですが、デバッグメッセンジャー専用の生成情報``VkDebugUtilsMessengerCreateInfoEXT``を作って、``vkCreateDebugUtilsMessengerEXT`` 関数を呼び出します。
+大まかな形としては、次のようになります。
+
+```cpp:src/MyApplication.h 
+	/*** debugMessenger の処理 ***/
+	// 初期化
+	static void initializeDebugMessenger(VkInstance &instance, VkDebugUtilsMessengerEXT &debugMessenger)
+	{
+		if (!enableValidationLayers) return;
+
+		VkDebugUtilsMessengerCreateInfoEXT createInfo = populateDebugMessengerCreateInfo();// 生成情報の構築
+
+		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {// 生成
+			throw std::runtime_error("failed to set up debug messenger!");
+		}
+	}
+```
+
+生成情報ですが、これが細々しています。
+種類として、``VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT``を指定しますが、それ以外にも、何時・どのような時にメッセージを送るかという指定や、実際に呼び出される処理をコールバック関数の形で設定します。
+
+``messageSeverity`` では、危険度に応じてメッセージ表示の使い分けをします。なるべく多く表示した方が良いのですが、多すぎて実質対応できなかったり、実行速度を落とすようなことは望ましくないので、必要に応じて、メッセージ量を調整しましょう。
+
+``messageType`` では、仕様からどの程度逸脱している場合に表示するか指定します。
+
+コールバック関数``pfnUserCallback``では、今回は受け取ったメッセージを「validation layer: 」という単語を頭につけて表示するものにしました。
+
+```cpp:src/MyApplication.h 
+	// debugMessenger の生成情報の作成
+	static VkDebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfo()
+	{
+		VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |  // 診断メッセージ
+//			VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |                          // リソースの作成などの情報メッセージ(かなり表示される)
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |                       // 必ずしもエラーではないが、アプリケーションのバグである可能性が高い動作に関するメッセージ
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;                          // 無効であり、クラッシュを引き起こす可能性のある動作に関するメッセージ
+		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |          // 仕様またはパフォーマンスとは無関係のイベントが発生
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |                        // 仕様に違反する、または間違いの可能性を示すものが発生
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;                        // Vulkanの最適でない使用の可能性
+		createInfo.pfnUserCallback = [](
+			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+			VkDebugUtilsMessageTypeFlagsEXT messageType,
+			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+			void* pUserData) -> VKAPI_ATTR VkBool32
+		{
+			std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+			return VK_FALSE;
+		};
+
+		return createInfo;
+	}
+```
+
+まだ説明していないメソッド``CreateDebugUtilsMessengerEXT``は、``vkCreateDebugUtilsMessengerEXT``という名前の関数ポインタを取得して実行します。
+この形式は、OpenGLのエクステンションの実行で頻繁に見つける形式となりますので、慣れておくと、他のKhronosのAPIを使うときに困らなくなるかもしれません。
+
+```cpp:src/MyApplication.h 
+	// debugMessenger の生成
+	static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
+		const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+		const VkAllocationCallbacks* pAllocator,
+		VkDebugUtilsMessengerEXT* pDebugMessenger)
+	{
+		// vkCreateDebugUtilsMessengerEXTに対応しているか確認して実行
+		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+		if (func == nullptr) return VK_ERROR_EXTENSION_NOT_PRESENT;
+		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+	}	
+```
+
+### 拡張機能の片付け
+
+後片付けは、``vkDestroyDebugUtilsMessengerEXT``関数の関数ポインタを見つけて呼び出せば大丈夫です。
+
+```cpp:src/MyApplication.h 
+	// 片付け
+	static void finalizeDebugMessenger(VkInstance& instance, VkDebugUtilsMessengerEXT& debugMessenger)
+	{
+		if (!enableValidationLayers) return;
+
+		// vkCreateDebugUtilsMessengerEXTに対応しているか確認して実行
+		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+		if (func == nullptr) return;
+		func(instance, debugMessenger, nullptr);
+	}
+```
+
+
+## インスタンス生成時の検証
+
+
+![インスタンス情報の追加](4/messenger_info "インスタンス情報の追加")
+
 
 
 * [戻る](./)
