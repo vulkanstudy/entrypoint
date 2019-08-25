@@ -322,6 +322,110 @@ GPUの性能を最大限に活かすために、人間は奴隷となって下�
 デバッグ中は、検証レイヤーを挟むことによって(CPUに負荷をかけて)不具合を検証しながら実行できるようにするとともに、
 リリース時には、検証レイヤーを抜いて高速に実行できるようにするシステムです。
 
+## 検証レイヤーの実装
+
+検証レイヤーは、リリース時には取り除かれるべきものです。
+この場合の定番的な手法として、フラグの導入があります。
+今回は、リリース時（デバッグ機能を無効にする時）に定義される宣言``NDEBUG``を使って、検証レイヤーを追加する作業の切り替えに使ってみます。
+
+```cpp:src/MyApplication.h 
+// Debug フラグ
+#ifdef NDEBUG
+// Vulkan は、高速化のために常にエラーチェックをするわけではない。
+// といっても、何も表示されないとデバッグが困難なので、
+// 開発中に使うものとして、エラーチェックを行う層(Layer)に置き換えられるようにしている
+// この、エラーチェック用のシステムを挟むのが、validation Layer
+const bool enableValidationLayers = false;
+#else
+const bool enableValidationLayers = true;
+#endif
+```
+
+## 検証レイヤーの追加
+
+検証レイヤーは、``createInfo.ppEnabledLayerNames``にレイヤー名の文字列のポインタのリストを、``createInfo::enabledLayerCount``にレイヤー数を固定して設定します。今までのプログラムを改変して組み込む場合は、``vkCreateInstance``関数を呼び出す前にレイヤー名を追加すればよいでしょう。
+
+```cpp:src/MyApplication.h 
+	static void createInstance(VkInstance *dest)
+	{
+		// アプケーション情報を定めるための構造体
+		VkApplicationInfo appInfo = {};
+		(省略)
+
+		// 新しく作られるインスタンスの設定の構造体
+		VkInstanceCreateInfo createInfo = {};
+		(省略)
+
+		if (enableValidationLayers) {// ★このif文と中を追加
+			static const std::vector<const char*> validationLayers = {
+				"VK_LAYER_KHRONOS_validation"
+			};
+
+			// 検証レイヤーの確認
+			if (!checkValidationLayerSupport(validationLayers)) {
+				throw std::runtime_error("validation layers requested, but not available!");
+			}
+
+			// インスタンスへの設定
+			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+			createInfo.ppEnabledLayerNames = validationLayers.data();
+		}
+
+		// インスタンスの生成
+		if (vkCreateInstance(&createInfo, nullptr, dest) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create instance!");
+		}
+	}
+```
+
+ここで追加した検証レイヤーの名前は、``VK_LAYER_KHRONOS_validation``となっています。
+これは、次のような複数の検証レイヤーの組み合わせで、丸ごとお徳用セットの追加というような形になっています。
+
+- VK_LAYER_GOOGLE_threading
+- VK_LAYER_LUNARG_parameter_validation
+- VK_LAYER_LUNARG_object_tracker
+- VK_LAYER_LUNARG_core_validation
+- VK_LAYER_GOOGLE_unique_objects
+
+ここで、まだ説明していないメソッドは、``checkValidationLayerSupport``になります。
+
+現在の環境で利用可能なレイヤーは、``vkEnumerateInstanceLayerProperties``で取得することができます。
+利用可能なレイヤーの種類は、環境によって変わるので、個数を取得してから、具体的な対応レイヤーの名前を取得します。
+個数を取得するには、実際のデータを格納する先をnullptrにしてから関数を呼び出します。
+もう一度同じ関数を、今度は格納先を与え、個数を指定して呼び出すことで、その中身が取得できます。
+
+面倒くさい…
+
+
+さて、対応しているレイヤーが得られたら、これから使いたいレイヤー群（引数の``validationLayers``）がそれらレイヤーに含まれているか確認します。
+全ての使いたいレイヤー(``validationLayers``の要素)が、対応するレイヤー群(``availableLayers``)の何れにも含まれていない場合に``false``を返しています。
+言い換えると、この関数が``true``で帰った来たら、すべての使いたいレイヤーが、対応しているレイヤーのどれかだったということを判定しています。
+
+```cpp:src/MyApplication.h 
+	// 検証レイヤーに対応しているか確認
+	static bool checkValidationLayerSupport(const std::vector<const char*> &validationLayers)
+	{
+		// レイヤーのプロパティを取得
+		uint32_t layerCount;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);               // レイヤー数の取得
+		std::vector<VkLayerProperties> availableLayers(layerCount);		
+		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());// プロパティ自体の取得
+
+		// 全てのレイヤーが検証レイヤーに対応しているか確認
+		for (const char* layerName : validationLayers) {
+			if (![](const char* layerName, const auto &availableLayers) {
+				// レイヤーが検証レイヤーのどれかを持っているか確認
+				for (const auto& layerProperties : availableLayers) {
+					if (strcmp(layerName, layerProperties.layerName) == 0) {return true;}
+				}
+				return false;
+			}(layerName, availableLayers)) { return false; }// どこかのレイヤーがvalidationLayersのレイヤーに対応していないのはダメ
+		}
+
+		return true;
+	}
+```
+
 
 # デバッグメッセージ表示
 
