@@ -81,7 +81,7 @@ GPU名を取得できるので、その名前からユーザーが選ぶこと�
 			}
 		}
 
-    // 使える物理デバイスがなければ大問題
+		// 使える物理デバイスがなければ大問題
 		if(best_device == VK_NULL_HANDLE) throw std::runtime_error("failed to find a suitable GPU!");
 
 		return best_device;
