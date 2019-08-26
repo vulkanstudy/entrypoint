@@ -126,6 +126,11 @@ GPUの性能の高さを評価することができます。
 	}
 ```
 
+今回のプログラムでは、得点付けの最後に各物理デバイスの得点を表示してみました。
+著者の執筆環境では、次のような表示が得られました。
+本機は、Lenovo ThinkPad T490で、NVIDIA のGeForce MX 250 GPUと、Intelの内臓GPUの2つのGPUを持っているノートPCです。
+
+![物理デバイスの得点](5/device_list.png "物理デバイスの得点")
 
 ```cpp:src/MyApplication.h 
 ```
