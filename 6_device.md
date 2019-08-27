@@ -54,6 +54,8 @@ private:
 
 ### デバイスの生成
 
+さて、実際に生成する``createLogicalDevice``の中身です。
+
 論理デバイスの初期は、``VkDeviceCreateInfo ``構造体に情報をセットして、``vkCreateDevice``を呼び出します。
 構造体の``sType``は、``VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO``です。
 
