@@ -22,7 +22,7 @@ private:
 	GLFWwindow* window_;
 	VkInstance instance_;
 	VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
-  VkDevice device_;// ★追加
+	VkDevice device_;// ★追加
 	VkDebugUtilsMessengerEXT debugMessenger_;// デバッグメッセージを伝えるオブジェクト
 ```
 
@@ -53,6 +53,9 @@ private:
 
 ``VkDeviceCreateInfo ``構造体には、使用するキューファミリーを設定します。
 キューファミリーは、``VkDeviceQueueCreateInfo``構造体に使用する情報を格納します。
+
+![デバイスの初期化のイメージ](6/device_info.png "デバイスの初期化のイメージ")
+
 
 ```cpp:src/MyApplication.h 
 	VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, VkQueue &graphicsQueue)
