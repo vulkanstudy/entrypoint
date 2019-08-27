@@ -10,7 +10,7 @@
 
 ![物理デバイスのイメージ](5/phys_device.png "物理デバイスのイメージ")
 
-今回のプログラムを入力して、[最終的に作られるコード](https://github.com/vulkanstudy/5_device)はこちら。
+今回のプログラムを入力して、[最終的に作られるコード](https://github.com/vulkanstudy/5_physical_device)はこちら。
 
 ## 物理デバイスのオブジェクト
 
