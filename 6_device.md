@@ -138,7 +138,7 @@ private:
 ## デバイスキューの取得
 
 実際に命令を出すキューは、論理デバイスに関連した、``VkQueue``としてオブジェクト化されます。
-``VkQueue``は、
+``VkQueue``は、デバイスが生成した直後に取得してみましょう（インデックス情報のスコープがメソッド内だけのため）。
 
 ```cpp:src/MyApplication.h 
 class MyApplication
