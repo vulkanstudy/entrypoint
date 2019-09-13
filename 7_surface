@@ -111,6 +111,7 @@ GPUに命令を伝えるqueueは、たとえグラフィックス用のqueueだ�
 
 ![キューのサーフェスへのアクセス](7/present_queue.png "キューのサーフェスへのアクセス")
 
+## プレゼントキューの定義
 
 ということで、サーフェスに対して指示を行うキューを選別する必要があります。
 今回は、``presentQueue``として、描画命令用のキューとは別にキューを用意しましょう。
@@ -146,6 +147,42 @@ queueのインデックスを格納する``QueueFamilyIndices``を複数のキ�
 	};
 ```
 
+キューファミリーは物理デバイスに対して含まれているかどうか確認します。
+デバイスが持つキューファミリーについて、その中にサーフェスに送れるキューを持っているかどうかは、
+``vkGetPhysicalDeviceSurfaceSupportKHR`` を呼び出すことで変わります。
+キューを実際に持っていて、その中に対象とするサーフェスに命令を送れるものがあるキューファミリーを登録します。
+
+```cpp:src/MyApplication.h 
+	static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, const VkSurfaceKHR surface)
+	{
+		(中略)
+
+		int i = 0;
+		QueueFamilyIndices indices;
+		for (const auto& queueFamily : queueFamilies) 
+		{
+			// キューファミリーにキューがあり、グラフィックスキューとして使えるか調べる
+			if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+				indices.graphicsFamily = i;
+			}
+
+			// ★追加：プレゼントキュー
+			VkBool32 presentSupport = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);// サーフェスに送れる?
+			if (queueFamily.queueCount > 0 && presentSupport) {
+				indices.presentFamily = i;
+			}
+
+			if (indices.isComplete()) {
+				break;
+			}
+
+			i++;
+		}
+
+		return indices;
+	}
+```
 
 
 
