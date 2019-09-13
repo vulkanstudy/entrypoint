@@ -1,7 +1,9 @@
-# サーフェス
+# ウィンドウサーフェス
 
 デバイスを確保できたので、GPUに命令を送る準備が進んできました。
 次に考えるのは、ディスプレイへの表示になります。
+
+# サーフェス
 
 ディスプレイへの表示はOSが行います。
 具体的には、「画面のどの場所にウィンドウを表示するのか？」、「全画面なのか？」、
@@ -103,129 +105,50 @@ private:
 
 # プレゼントキュー
 
+さて、画面に対するアクセスができたので、こちらに描画すればよいのですが、制限があるようです。
+GPUに命令を伝えるqueueは、たとえグラフィックス用のqueueだとしても、サーフェスにアクセスできない場合があるようなのです。
+グラフィックスの描画は、2次元の画像として絵を生成することが多いですが、この書き込み先にサーフェスを直接には書けない（命令を出せない）場合があるようなのです。
 
-論理デバイスの初期は、``VkDeviceCreateInfo ``構造体に情報をセットして、``vkCreateDevice``を呼び出します。
-構造体の``sType``は、``VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO``です。
+![キューのサーフェスへのアクセス](7/present_queue.png "キューのサーフェスへのアクセス")
 
-``VkDeviceCreateInfo ``構造体には、使用するキューファミリーを設定します。
-キューファミリーは、``VkDeviceQueueCreateInfo``構造体に使用する情報を格納します。
 
-![デバイスの初期化のイメージ](6/device_info.png "デバイスの初期化のイメージ")
-
-コードとしては、長いですが、次のようになります。
-
-```cpp:src/MyApplication.h 
-	VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, VkQueue &graphicsQueue)
-	{
-		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-
-		// 使用するキューに関する情報を記録
-		VkDeviceQueueCreateInfo queueCreateInfo = {};
-		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();// キューファミリーのインデックス
-		queueCreateInfo.queueCount = 1;// キューの個数
-
-		float queuePriority = 1.0f;// キューの優先度を設定
-		queueCreateInfo.pQueuePriorities = &queuePriority;
-
-		// デバイスを生成するための情報を構築
-		VkDeviceCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-		createInfo.pQueueCreateInfos = &queueCreateInfo;// VkDeviceQueueCreateInfo
-		createInfo.queueCreateInfoCount = 1;
-
-		VkPhysicalDeviceFeatures deviceFeatures = {};// 使用する機能の情報(今回は特に無し)
-		createInfo.pEnabledFeatures = &deviceFeatures;
-
-		createInfo.enabledExtensionCount = 0;// 拡張機能(今回は無し)
-
-		// 論理デバイスの作成
-		VkDevice device;
-		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create logical device!");
-		}
-		
-		return device;
-	}
-```
-
-### 検証レイヤーの組み込み
-
-なお、デバイスにも検証レイヤーを挟んでいきます。
+ということで、サーフェスに対して指示を行うキューを選別する必要があります。
+今回は、``presentQueue``として、描画命令用のキューとは別にキューを用意しましょう。
 
 ```cpp:src/MyApplication.h 
 class MyApplication
 {
 private:
-	constexpr static char APP_NAME[] = "Vulkan Application";
+	(中略)
 
-	inline static std::vector<const char*> validationLayers = {// ★移動
-		"VK_LAYER_KHRONOS_validation"
-	};
-
-
-	VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, VkQueue &graphicsQueue)
-	{
-		(中略)
-		
-		// ★追加：検証レイヤーの設定
-		if (enableValidationLayers) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
-		}
-
-		// 論理デバイスの作成
-		VkDevice device;
-		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create logical device!");
-		}
-
-		return device;
-	}
+	VkQueue graphicsQueue_;
+	VkQueue presentQueue_;// ★追加
 ```
 
-ここで、検証レイヤー名の配列は、インスタンス生成とデバイスの生成の両方で使うので、メソッド内の変数から静的メンバーの置き換えました。
+複数のqueueを扱うことになるので、今までのプログラムを拡張していきます。
 
-## デバイスキューの取得
+## プレゼントキューの取得
 
-実際に命令を出すキューは、論理デバイスに関連した、``VkQueue``としてオブジェクト化されます。
-``VkQueue``は、デバイスが生成した直後に取得することにしましょう（インデックス情報のスコープがメソッド内だけのため）。
+queueのインデックスを格納する``QueueFamilyIndices``を複数のキューに拡張します。
+こちら、``presentQueue``を保持するキューファミリーも保持できるようにします
+（この``presentFamily``は``graphicsFamily``と同じものかもしれません）。
 
 ```cpp:src/MyApplication.h 
-class MyApplication
-{
-private:
-	constexpr static char APP_NAME[] = "Vulkan Application";
-
-	inline static std::vector<const char*> validationLayers = {
-		"VK_LAYER_KHRONOS_validation"
-	};
-
-	GLFWwindow* window_;
-	VkInstance instance_;
-	VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
-	VkDevice device_;
-	VkQueue graphicsQueue_; // ★追加
-	VkDebugUtilsMessengerEXT debugMessenger_;// デバッグメッセージを伝えるオブジェクト
-
-	VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, VkQueue &graphicsQueue)// ★引数の修正
+	struct QueueFamilyIndices
 	{
-		(中略)
-		
-		// 論理デバイスの作成
-		VkDevice device;
-		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create logical device!");
+		std::optional<uint32_t> graphicsFamily;
+		std::optional<uint32_t> presentFamily;// ★追加：OSの描画システムに結果を送るためのキューファミリー
+
+		bool isComplete() {
+			return graphicsFamily.has_value()
+				&& presentFamily.has_value();// ★修正
 		}
-
-		// ★追加：キューの取得
-		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-
-		return device;
-	}
+	};
 ```
 
-このキューをどう使うかは、この後のお楽しみ
+
+
+
+少しずつ画面への表示に近づいてきました。
 
 * [戻る](./)
