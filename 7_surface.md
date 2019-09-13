@@ -106,15 +106,16 @@ private:
 # プレゼントキュー
 
 さて、画面に対するアクセスができたので、こちらに描画すればよいのですが、制限があるようです。
-GPUに命令を伝えるqueueは、たとえグラフィックス用のqueueだとしても、サーフェスにアクセスできない場合があるようなのです。
-グラフィックスの描画は、2次元の画像として絵を生成することが多いですが、この書き込み先にサーフェスを直接には書けない（命令を出せない）場合があるようなのです。
+GPUに命令を伝えるqueueは、キューファミリー単位でサーフェスにアクセスできない場合があります。
+例えばGPU汎用計算のキューファミリーは、そもそも画面に出力する目的ではないので、サーフェスにアクセスする必要はありません。
+また、グラフィックスの描画は、2次元の画像として絵を生成することが多いですが、この書き込み先にサーフェスを直接には書けない（命令を出せない）場合もあるようです。
 
 ![キューのサーフェスへのアクセス](7/present_queue.png "キューのサーフェスへのアクセス")
 
 ## プレゼントキューの定義
 
 ということで、サーフェスに対して指示を行うキューを選別する必要があります。
-今回は、``presentQueue``として、描画命令用のキューとは別にキューを用意しましょう。
+今回は、``presentQueue``として、描画命令用のキューとは別にキューを用意します。
 
 ```cpp:src/MyApplication.h 
 class MyApplication
@@ -148,9 +149,9 @@ queueのインデックスを格納する``QueueFamilyIndices``を複数のキ�
 ```
 
 キューファミリーは物理デバイスに対して含まれているかどうか確認します。
-デバイスが持つキューファミリーについて、その中にサーフェスに送れるキューを持っているかどうかは、
-``vkGetPhysicalDeviceSurfaceSupportKHR`` を呼び出すことで変わります。
-キューを実際に持っていて、その中に対象とするサーフェスに命令を送れるものがあるキューファミリーを登録します。
+デバイスが持つキューファミリーが、サーフェスに命令を送れるかどうかは、
+``vkGetPhysicalDeviceSurfaceSupportKHR`` を呼び出すことで分かります。
+キューを実際に持っていて、サーフェスに命令を送れるものがあるキューファミリーを``QueueFamilyIndices::presentFamily``に登録します。
 
 ```cpp:src/MyApplication.h 
 	static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, const VkSurfaceKHR surface)
@@ -184,6 +185,71 @@ queueのインデックスを格納する``QueueFamilyIndices``を複数のキ�
 	}
 ```
 
+## プレゼントキューのデバイス生成への追加
+
+判明したプレゼントキューのキューファミリーをデバイスの生成時の情報に追加する。
+
+前のプログラムでは、``VkDeviceCreateInfo::pQueueCreateInfos`` にグラフィックスキューの``VkDeviceQueueCreateInfo``のポインタを指定した。
+複数のキューファミリーをデバイスに追加する際は、``VkDeviceCreateInfo::pQueueCreateInfos`` に``VkDeviceQueueCreateInfo``の配列の先頭アドレスを指定して、``VkDeviceCreateInfo::queueCreateInfoCount``にキューファミリーの個数を設定します。
+今回は、``std::vector<VkDeviceQueueCreateInfo> queueCreateInfos``として、``VkDeviceQueueCreateInfo``を配列化しました。
+他の変更点は、``uniqueQueueFamilies``にプレゼントキューを追加して、その分だけforループで``VkDeviceQueueCreateInfo``を構築していきます。
+
+```cpp:src/MyApplication.h 
+	VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, VkQueue& graphicsQueue, VkQueue& presentQueue, const VkSurfaceKHR surface)
+	{
+		QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
+
+		// 使用するキューの情報を設定 (★複数キュー向けに拡張)
+		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+		std::set<uint32_t> uniqueQueueFamilies = {
+			indices.graphicsFamily.value(),
+			indices.presentFamily.value()
+		};
+
+		float queuePriority = 1.0f;// キューの優先度を設定
+		for (uint32_t queueFamily : uniqueQueueFamilies) {
+			VkDeviceQueueCreateInfo queueCreateInfo = {};
+			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queueCreateInfo.queueFamilyIndex = queueFamily;
+			queueCreateInfo.queueCount = 1;
+			queueCreateInfo.pQueuePriorities = &queuePriority;
+			queueCreateInfos.push_back(queueCreateInfo);
+		}
+
+		// デバイスを生成するための情報を構築
+		VkDeviceCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+		//★複数キュー向けに拡張
+		createInfo.pQueueCreateInfos = queueCreateInfos.data();
+		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+
+		VkPhysicalDeviceFeatures deviceFeatures = {};// 使用する機能の情報(今回は特に無し)
+		createInfo.pEnabledFeatures = &deviceFeatures;
+
+		createInfo.enabledExtensionCount = 0;// 拡張機能(今回は無し)
+
+		// 検証レイヤーの設定
+		if (enableValidationLayers) {
+			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+			createInfo.ppEnabledLayerNames = validationLayers.data();
+		}
+
+		// 論理デバイスの作成
+		VkDevice device;
+		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create logical device!");
+		}
+
+		// キューの取得
+		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);//★追加
+
+		return device;
+	}
+```
+
+最後に、``vkGetDeviceQueue``でプレゼントキューのキューのハンドル``VkQueue``を取得しました。
 
 
 少しずつ画面への表示に近づいてきました。
